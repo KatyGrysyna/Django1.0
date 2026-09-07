@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Книги{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Каталог книг</h1>
+
+<div class="mb-4">
+    <a href="{% url 'catalog:book_list' %}"
+       class="btn btn-sm {% if not selected_category %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        Всі категорії
+    </a>
+    {% for category in categories %}
+    <a href="?category={{ category.slug }}"
+       class="btn btn-sm {% if selected_category == category.slug %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        {{ category.name }}
+    </a>
+    {% endfor %}
+</div>
+
+<div class="row">
+    {% for book in books %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ book.title }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ book.author }}</h6>
+                <p class="card-text">{{ book.price }} грн · залишок: {{ book.stock }}</p>
+                <a href="{% url 'catalog:book_detail' book.pk %}" class="btn btn-outline-secondary btn-sm">
+                    Детальніше
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p>Книг поки немає.</p>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}">Назад</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">{{ page_obj.number }} з {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}">Далі</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
