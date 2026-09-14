@@ -21,6 +21,26 @@
                     <a class="nav-link" href="{% url 'catalog:book_create' %}">Додати книгу</a>
                 </li>
             </ul>
+            <ul class="navbar-nav ms-auto">
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <span class="nav-link">Привіт, {{ user.username }}!</span>
+                </li>
+                <li class="nav-item">
+                    <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link nav-link">Вийти</button>
+                    </form>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:login' %}">Увійти</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:register' %}">Реєстрація</a>
+                </li>
+                {% endif %}
+            </ul>
         </div>
     </div>
 </nav>
