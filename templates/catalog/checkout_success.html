@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Дякуємо за замовлення{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="text-success mb-4">Оплата успішна!</h1>
+    <p>Замовлення #{{ order.id }} оплачено.</p>
+    <p>Сума: {{ order.get_total }} грн</p>
+    <a href="{% url 'catalog:book_list' %}" class="btn btn-primary mt-3">До каталогу</a>
+</div>
+{% endblock %}

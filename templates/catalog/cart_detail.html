@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Кошик{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Кошик</h1>
+
+{% if cart|length > 0 %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Книга</th>
+            <th>Ціна</th>
+            <th>Кількість</th>
+            <th>Сума</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in cart %}
+        <tr>
+            <td>{{ item.book.title }}</td>
+            <td>{{ item.price }} грн</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.subtotal }} грн</td>
+            <td>
+                <a href="{% url 'catalog:cart_remove' item.book.id %}" class="btn btn-sm btn-outline-danger">
+                    Видалити
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h4>Разом: {{ cart.get_total_price }} грн</h4>
+    <div>
+        <a href="{% url 'catalog:cart_clear' %}" class="btn btn-outline-secondary">Очистити кошик</a>
+        <a href="{% url 'catalog:checkout' %}" class="btn btn-success">Оформити замовлення</a>
+    </div>
+</div>
+{% else %}
+<p>Кошик порожній.</p>
+<a href="{% url 'catalog:book_list' %}" class="btn btn-primary">До каталогу</a>
+{% endif %}
+{% endblock %}

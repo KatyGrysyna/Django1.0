@@ -29,6 +29,9 @@
                 <a href="{% url 'catalog:book_detail' book.pk %}" class="btn btn-outline-secondary btn-sm">
                     Детальніше
                 </a>
+                <a href="{% url 'catalog:cart_add' book.pk %}" class="btn btn-primary btn-sm">
+                    У кошик
+                </a>
             </div>
         </div>
     </div>
