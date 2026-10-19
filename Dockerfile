@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     gcc \
+    gettext \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 

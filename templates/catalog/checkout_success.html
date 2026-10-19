@@ -1,12 +1,24 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Дякуємо за замовлення{% endblock %}
+{% block title %}{% trans "Дякуємо за замовлення" %}{% endblock %}
 
 {% block content %}
 <div class="text-center py-5">
-    <h1 class="text-success mb-4">Оплата успішна!</h1>
-    <p>Замовлення #{{ order.id }} оплачено.</p>
-    <p>Сума: {{ order.get_total }} грн</p>
-    <a href="{% url 'catalog:book_list' %}" class="btn btn-primary mt-3">До каталогу</a>
+    <h1 class="text-success mb-4">
+        {% trans "Оплата успішна!" %}
+    </h1>
+
+    <p>
+        {% blocktrans with order_id=order.id %}Замовлення #{{ order_id }} оплачено.{% endblocktrans %}
+    </p>
+
+    <p>
+        {% blocktrans with total=order.get_total %}Сума: {{ total }} грн{% endblocktrans %}
+    </p>
+
+    <a href="{% url 'catalog:book_list' %}" class="btn btn-primary mt-3">
+        {% trans "До каталогу" %}
+    </a>
 </div>
 {% endblock %}

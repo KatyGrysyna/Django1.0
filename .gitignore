@@ -6,3 +6,8 @@ db.sqlite3
 *.log
 debug.log
 staticfiles/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

@@ -1,15 +1,24 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Вхід{% endblock %}
+{% block title %}{% trans "Вхід" %}{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Вхід</h1>
+<h1 class="mb-4">{% trans "Вхід" %}</h1>
 
 <form method="post" style="max-width: 400px;">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Увійти</button>
+
+    <button type="submit" class="btn btn-primary">
+        {% trans "Увійти" %}
+    </button>
 </form>
 
-<p class="mt-3">Немає акаунту? <a href="{% url 'accounts:register' %}">Зареєструватися</a></p>
+<p class="mt-3">
+    {% trans "Немає акаунту?" %}
+    <a href="{% url 'accounts:register' %}">
+        {% trans "Зареєструватися" %}
+    </a>
+</p>
 {% endblock %}

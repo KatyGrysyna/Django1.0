@@ -1,15 +1,24 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Видалити книгу{% endblock %}
+{% block title %}{% trans "Видалити книгу" %}{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Видалити книгу?</h1>
+<h1 class="mb-4">{% trans "Видалити книгу?" %}</h1>
 
-<p>Ви впевнені, що хочете видалити «{{ object.title }}»?</p>
+<p>
+    {% blocktrans with title=object.title %}Ви впевнені, що хочете видалити «{{ title }}»?{% endblocktrans %}
+</p>
 
 <form method="post">
     {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Так, видалити</button>
-    <a href="{% url 'catalog:book_list' %}" class="btn btn-secondary">Скасувати</a>
+
+    <button type="submit" class="btn btn-danger">
+        {% trans "Так, видалити" %}
+    </button>
+
+    <a href="{% url 'catalog:book_list' %}" class="btn btn-secondary">
+        {% trans "Скасувати" %}
+    </a>
 </form>
 {% endblock %}

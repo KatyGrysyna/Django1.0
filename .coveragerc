@@ -1,0 +1,14 @@
+[run]
+source =
+    catalog
+    accounts
+    shop_project
+omit =
+    */migrations/*
+    */tests.py
+    */settings_test.py
+
+[report]
+show_missing = True
+precision = 2
+fail_under = 70
