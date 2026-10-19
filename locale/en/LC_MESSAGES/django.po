@@ -397,3 +397,5 @@ msgstr "Order #%(order_id)s has been paid."
 msgid "Сума: %(total)s грн"
 msgstr "Total: %(total)s UAH"
 
+msgid "Не вдалося створити оплату. Спробуйте пізніше."
+msgstr "Could not start checkout. Please try again later."

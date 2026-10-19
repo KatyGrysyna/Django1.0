@@ -8,9 +8,12 @@ import stripe
 from django.utils.translation import override
 from pytest_django.asserts import assertContains, assertRedirects
 
-from catalog.models import Order
+from catalog.models import Order, OrderItem
 
 from .factories import BookFactory, UserFactory
+from django.db import IntegrityError
+from django.test import Client
+
 
 
 pytestmark = [
@@ -53,7 +56,7 @@ def checkout_order(client, user, book, services):
         response = client.get(f'/uk/cart/add/{book.pk}/')
         assert response.status_code == 302
 
-    response = client.get('/uk/checkout/')
+    response = client.post('/uk/checkout/')
 
     assert response.status_code == 303
     assert response.url == services.create.return_value.url
@@ -102,7 +105,7 @@ def test_cart_clear_removes_all_books(client, book):
 def test_empty_cart_does_not_create_order(client, user, services):
     client.force_login(user)
 
-    response = client.get('/uk/checkout/')
+    response = client.post('/uk/checkout/')
 
     assertRedirects(response, '/uk/cart/')
     assert not Order.objects.exists()
@@ -312,4 +315,175 @@ def test_email_failure_does_not_undo_confirmed_payment(
     assert checkout_order.status == 'paid'
     assert client.session['cart'] == {}
 
+    services.email.assert_called_once()
+def test_checkout_rejects_get(client, user, book, services):
+    # Generated with AI, reviewed and modified
+    client.force_login(user)
+    client.get(f'/uk/cart/add/{book.pk}/')
+    cart_before = client.session['cart']
+
+    response = client.get('/uk/checkout/')
+
+    assert response.status_code == 405
+    assert response.headers['Allow'] == 'POST'
+    assert not Order.objects.exists()
+    assert client.session['cart'] == cart_before
+    services.create.assert_not_called()
+
+
+def test_checkout_handles_stripe_creation_error(
+    client,
+    user,
+    book,
+    services,
+):
+    # Generated with AI, reviewed and modified
+    client.force_login(user)
+    client.get(f'/uk/cart/add/{book.pk}/')
+    cart_before = client.session['cart']
+
+    services.create.side_effect = stripe.APIConnectionError(
+        'Test Stripe creation failure',
+    )
+
+    response = client.post('/uk/checkout/')
+
+    assertContains(
+        response,
+        'Не вдалося створити оплату. Спробуйте пізніше.',
+        status_code=503,
+    )
+
+    order = Order.objects.get(user=user)
+
+    assert order.status == 'pending'
+    assert order.stripe_session_id == ''
+
+    item = order.items.get()
+
+    assert item.book_id == book.pk
+    assert item.quantity == 1
+    assert item.price == book.price
+    assert client.session['cart'] == cart_before
+
+    services.create.assert_called_once()
+    services.retrieve.assert_not_called()
+    services.email.assert_not_called()
+def test_checkout_rolls_back_partial_order(
+    client,
+    user,
+    book,
+    services,
+):
+    # Generated with AI, reviewed and modified
+    second_book = BookFactory()
+
+    client.force_login(user)
+    client.get(f'/uk/cart/add/{book.pk}/')
+    client.get(f'/uk/cart/add/{second_book.pk}/')
+    cart_before = client.session['cart']
+
+    original_create = OrderItem.objects.create
+    create_calls = 0
+
+    def create_item_or_fail(**kwargs):
+        nonlocal create_calls
+        create_calls += 1
+
+        if create_calls == 2:
+            raise IntegrityError('Test failure on the second item')
+
+        return original_create(**kwargs)
+
+    with patch(
+        'catalog.views.OrderItem.objects.create',
+        side_effect=create_item_or_fail,
+    ):
+        with pytest.raises(
+            IntegrityError,
+            match='Test failure on the second item',
+        ):
+            client.post('/uk/checkout/')
+
+    assert create_calls == 2
+    assert not Order.objects.exists()
+    assert not OrderItem.objects.exists()
+    assert client.session['cart'] == cart_before
+    services.create.assert_not_called()
+def test_checkout_requires_csrf_token(user, book, services):
+    # Generated with AI, reviewed and modified
+    csrf_client = Client(enforce_csrf_checks=True)
+    csrf_client.force_login(user)
+
+    csrf_client.get(f'/uk/cart/add/{book.pk}/')
+    csrf_client.get('/uk/cart/')
+
+    cart_before = csrf_client.session['cart']
+    token = csrf_client.cookies['csrftoken'].value
+
+    response = csrf_client.post('/uk/checkout/')
+
+    assert response.status_code == 403
+    assert not Order.objects.exists()
+    assert csrf_client.session['cart'] == cart_before
+    services.create.assert_not_called()
+
+    response = csrf_client.post(
+        '/uk/checkout/',
+        {'csrfmiddlewaretoken': token},
+    )
+
+    assert response.status_code == 303
+    assert response.url == services.create.return_value.url
+    assert Order.objects.get(user=user).status == 'pending'
+    services.create.assert_called_once()
+
+@pytest.mark.parametrize(
+    'change',
+    ['new_book', 'quantity', 'price'],
+)
+def test_first_payment_confirmation_preserves_changed_cart(
+    client,
+    checkout_order,
+    book,
+    services,
+    change,
+):
+    # Generated with AI, reviewed and modified
+    assert checkout_order.status == 'pending'
+
+    if change == 'new_book':
+        another_book = BookFactory()
+        client.get(f'/uk/cart/add/{another_book.pk}/')
+
+    elif change == 'quantity':
+        client.get(f'/uk/cart/add/{book.pk}/')
+
+    else:
+        book.price = Decimal('150.00')
+        book.save(update_fields=['price'])
+
+        client.get(f'/uk/cart/remove/{book.pk}/')
+
+        for _ in range(2):
+            client.get(f'/uk/cart/add/{book.pk}/')
+
+    cart_before = client.session['cart']
+
+    response = client.get(
+        '/uk/checkout/success/',
+        {'order_id': checkout_order.pk},
+    )
+
+    assertContains(response, 'Оплата успішна!')
+
+    checkout_order.refresh_from_db()
+
+    assert checkout_order.status == 'paid'
+    assert checkout_order.get_total() == Decimal('200.00')
+    assert client.session['cart'] == cart_before
+
+    services.retrieve.assert_called_once_with(
+        checkout_order.stripe_session_id,
+    )
     services.email.assert_called_once()
