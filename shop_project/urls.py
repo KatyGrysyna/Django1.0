@@ -5,8 +5,8 @@ from django.urls import include, path
 
 
 urlpatterns = [
-    # Обработчик переключения языка
     path('i18n/', include('django.conf.urls.i18n')),
+    path('api/', include('catalog.api_urls')),
 ]
 
 urlpatterns += i18n_patterns(

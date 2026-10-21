@@ -158,6 +158,171 @@ docker-compose down
 
 Для порожнього каталогу перша сторінка повертає порожній список і HTTP 200.
 
+## REST API — Django REST Framework
+
+REST API доступний за префіксом `/api/` без мовного префікса.
+
+Використано ViewSets, DefaultRouter, вкладені serializers, django-filter,
+SimpleJWT, drf-spectacular та django-cors-headers.
+
+### Документація
+
+- [Swagger UI](http://127.0.0.1:8000/api/docs/)
+- [OpenAPI schema](http://127.0.0.1:8000/api/schema/)
+
+### Endpoints
+
+| Endpoint | Методи | Призначення |
+| --- | --- | --- |
+| `/api/books/` | GET, POST | Список і створення книг |
+| `/api/books/<id>/` | GET, PUT, PATCH, DELETE | Перегляд, редагування та видалення книги |
+| `/api/categories/` | GET, POST | Список і створення категорій |
+| `/api/categories/<id>/` | GET, PUT, PATCH, DELETE | Операції з категорією |
+| `/api/orders/` | GET, POST | Власні замовлення та створення замовлення |
+| `/api/orders/<id>/` | GET, PUT, PATCH, DELETE | Операції з власним замовленням |
+| `/api/cart/` | GET, POST | Перегляд і створення власного кошика |
+| `/api/cart/<id>/` | GET, PUT, PATCH, DELETE | Операції з власним кошиком |
+
+### JWT-авторизація
+
+| Endpoint | Метод | Тіло запиту |
+| --- | --- | --- |
+| `/api/token/` | POST | `username`, `password` |
+| `/api/token/refresh/` | POST | `refresh` |
+| `/api/token/verify/` | POST | `token` |
+
+Отримання токенів повертає `access` та `refresh`.
+Access-токен діє 15 хвилин, refresh-токен — 1 день.
+
+Для захищених запитів використовується заголовок:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+У Swagger UI натисніть **Authorize** та вставте access-токен без префікса `Bearer`.
+
+### Права доступу
+
+- Перегляд книг і категорій доступний без авторизації.
+- Створення, редагування та видалення книг і категорій доступні користувачам із `is_staff=True`. Це перевіряє `IsAdminOrReadOnly`, побудований на `IsAdminUser`.
+- Для замовлень і кошиків використано `IsAuthenticated` та власний permission `IsOwnerOrReadOnly`.
+- Querysets замовлень і кошиків обмежені поточним користувачем. Звернення до чужого об'єкта повертає HTTP 404.
+- Власник призначається сервером. Переданий клієнтом `user` не змінює власника.
+- Замовлення можна змінити або видалити лише у статусі `pending` без створеної Stripe Session.
+
+### Вкладені дані
+
+Книга містить вкладену категорію. Позиції замовлення та кошика містять вкладені книги.
+
+Для створення або редагування книги категорія передається через `category_id`.
+
+Приклад створення замовлення або кошика:
+
+```json
+{
+  "items": [
+    {
+      "book_id": 1,
+      "quantity": 2
+    }
+  ]
+}
+```
+
+Для замовлення список `items` обов'язковий і має містити хоча б одну позицію.
+Кількість повинна бути додатною; повторення книги в одному списку заборонено.
+
+Ціна позиції замовлення визначається сервером і зберігається на момент запису.
+Сума кошика розраховується за поточними цінами книг.
+
+Переданий під час оновлення список `items` повністю замінює попередні позиції.
+Порожній список очищає кошик. Один користувач може мати один кошик у базі даних.
+
+REST API використовує моделі `Cart` і `CartItem` у базі даних.
+Кошик HTML-сайту зберігається окремо в сесії; автоматичної синхронізації між ними немає.
+
+Створення замовлення через REST API зберігає його зі статусом `pending`.
+Оплата через Stripe реалізована в HTML-інтерфейсі.
+
+### Пагінація та фільтрування
+
+Списки повертають по **20 об'єктів на сторінку**.
+Відповідь містить `count`, `next`, `previous` та `results`.
+
+Приклад:
+
+```text
+/api/books/?page=2
+```
+
+Фільтри книг:
+
+- `category` — ID категорії;
+- `category_slug` — slug категорії;
+- `title` — частина назви без урахування регістру;
+- `author` — частина імені автора без урахування регістру;
+- `min_price`, `max_price` — межі ціни включно.
+
+Приклад:
+
+```text
+/api/books/?min_price=100&max_price=500
+```
+
+Категорії можна фільтрувати за точними значеннями `name` і `slug`.
+Замовлення — за `status`, `created_after` та `created_before`.
+Дати передаються у форматі ISO 8601.
+
+### Throttling
+
+- Анонімні запити: 60 за хвилину.
+- Авторизовані запити: 300 за хвилину.
+- JWT endpoints: 10 за хвилину.
+
+Перевищення ліміту повертає HTTP 429 із заголовком `Retry-After`.
+
+### CORS
+
+За замовчуванням дозволено такі origins:
+
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+Власний список можна задати в `.env` через кому:
+
+```dotenv
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+CORS застосовується до шляхів `/api/`.
+
+### Перевірка REST API
+
+Реалізовано **80 API-тестів** із використанням `APIClient`:
+
+- каталог і категорії — 24;
+- замовлення — 21;
+- кошик — 19;
+- JWT, throttling, CORS і документація — 16.
+
+Запуск:
+
+```powershell
+docker-compose exec web python -m pytest tests/test_api_catalog.py tests/test_api_orders.py tests/test_api_cart.py tests/test_api_config.py -v
+```
+
+Перевірка OpenAPI-схеми:
+
+```powershell
+docker-compose exec web python manage.py spectacular --validate --fail-on-warn --file /tmp/bookshop-schema.yml
+```
+
+Схема пройшла перевірку без помилок і попереджень.
+
+
 ## Тестування
 
 Тести використовують `shop_project.settings_test`, окрему тестову базу PostgreSQL, фабрики даних та підміну звернень до Stripe.
@@ -180,13 +345,14 @@ docker-compose exec web python -m pytest --cov --cov-report=term-missing --cov-r
 
 | Показник | Результат |
 | --- | --- |
-| Тести | 80 passed |
-| Загальне покриття | 96,20% |
-| `catalog/models.py` | 100% |
+| Усі тести | 160 passed |
+| API-тести | 80 passed |
+| Загальне покриття | 96,99% |
+| `catalog/models.py` | 97,33% |
 | `accounts/models.py` | 100% |
+| `catalog/serializers.py` | 100% |
+| `catalog/permissions.py` | 100% |
 | `catalog/async_views.py` | 100% |
-
-HTML-звіт створюється в `htmlcov/index.html`. Каталог `htmlcov` виключено з Git.
 
 ### AI-тести моделей
 
@@ -204,7 +370,7 @@ HTML-звіт створюється в `htmlcov/index.html`. Каталог `ht
 docker-compose exec web python -m pytest tests/test_ai_models.py -v --cov=catalog.models --cov-report=term-missing --cov-report=xml:coverage_models.xml --cov-fail-under=60
 ```
 
-Збережений результат цього окремого запуску — 97,96% покриття модуля `catalog.models`, який містить обрані моделі та `Category`. Вимога завдання щодо покриття щонайменше 60% виконана.
+Звіт `coverage_models.xml` збережено під час попереднього завдання з AI, до додавання моделей `Cart` і `CartItem`. Покриття модуля `catalog.models` у тому окремому запуску становило 97,96%. Поточні результати повного запуску наведено в таблиці вище.   
 
 Звіт для здачі: [coverage_models.xml](coverage_models.xml).
 

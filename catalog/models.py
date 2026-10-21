@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
@@ -133,3 +136,74 @@ class OrderItem(models.Model):
 
     def get_subtotal(self):
         return self.price * self.quantity
+
+
+class Cart(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='cart',
+        verbose_name=_('Користувач'),
+    )
+    created_at = models.DateTimeField(
+        verbose_name=_('Дата створення'),
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = _('Кошик')
+        verbose_name_plural = _('Кошики')
+
+    def __str__(self):
+        return _('Кошик №%(number)s (%(username)s)') % {
+            'number': self.pk,
+            'username': self.user.username,
+        }
+
+    def get_total(self):
+        return sum(
+            (item.get_subtotal() for item in self.items.all()),
+            Decimal('0.00'),
+        )
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name=_('Кошик'),
+    )
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.CASCADE,
+        related_name='cart_items',
+        verbose_name=_('Книга'),
+    )
+    quantity = models.PositiveIntegerField(
+        verbose_name=_('Кількість'),
+        default=1,
+        validators=[MinValueValidator(1)],
+    )
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = _('Позиція кошика')
+        verbose_name_plural = _('Позиції кошика')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cart', 'book'],
+                name='unique_cart_book',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1),
+                name='cart_item_quantity_gte_1',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.book.title} x{self.quantity}'
+
+    def get_subtotal(self):
+        return self.book.price * self.quantity
