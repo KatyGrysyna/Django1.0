@@ -1,24 +1,24 @@
 import logging
 from decimal import Decimal
-from smtplib import SMTPException
 
 import stripe
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.core.mail import send_mail
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy, reverse
-from django.utils.translation import gettext as _
+from django.utils.translation import get_language, gettext as _
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.core.cache import cache
 
 from .cart import Cart
 from .forms import BookForm
 from .models import Book, Category, Order, OrderItem
+from .tasks import send_order_confirmation
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = logging.getLogger(__name__)
@@ -49,11 +49,20 @@ class BookListView(ListView):
 
 
 class BookDetailView(DetailView):
-    """Display a book's details or return HTTP 404 if it does not exist."""
+    """Display a book and its category, or return HTTP 404."""
 
     model = Book
+    queryset = Book.objects.select_related('category')
     template_name = 'catalog/book_detail.html'
     context_object_name = 'book'
+
+    def get_object(self, queryset=None):
+        """Load public book details from the cache or the database."""
+        if queryset is not None:
+            return super().get_object(queryset)
+
+        key = f"catalog:book-detail:{self.kwargs['pk']}"
+        return cache.get_or_set(key, super().get_object)
 
 
 class BookCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -271,27 +280,13 @@ def checkout_success(request):
             cart.clear()
 
         if request.user.email:
-            message = (
-                _('Замовлення #%(order_id)s оплачено.')
-                % {'order_id': order.pk}
-            )
-            message += '\n' + (
-                _('Сума: %(total)s грн')
-                % {'total': total}
-            )
+            order_pk = order.pk
+            language = get_language() or settings.LANGUAGE_CODE
 
-            try:
-                send_mail(
-                    subject=_('Дякуємо за замовлення'),
-                    message=message,
-                    from_email=None,
-                    recipient_list=[request.user.email],
-                )
-            except (SMTPException, OSError):
-                logger.exception(
-                    'Could not send confirmation for order %s',
-                    order.pk,
-                )
+            transaction.on_commit(
+                lambda: send_order_confirmation.delay(order_pk, language),
+                robust=True,
+            )
 
     return render(
         request,

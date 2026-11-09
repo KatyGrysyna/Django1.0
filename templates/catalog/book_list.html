@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load i18n %}
+{% load i18n cache %}
 
 {% block title %}{% trans "Книги" %}{% endblock %}
 
@@ -20,8 +20,10 @@
     {% endfor %}
 </div>
 
+{% get_current_language as card_language %}
 <div class="row">
     {% for book in books %}
+    {% cache 300 book_card book.pk card_language using="default" %}
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-body">
@@ -46,6 +48,7 @@
             </div>
         </div>
     </div>
+    {% endcache %}
     {% empty %}
     <p>{% trans "Книг поки немає." %}</p>
     {% endfor %}

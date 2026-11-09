@@ -6,6 +6,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+import sentry_sdk
+from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
 
@@ -194,6 +196,28 @@ LOGGING = {
 
 REDIS_HOST = env('REDIS_HOST')
 REDIS_PORT = env('REDIS_PORT')
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+        'TIMEOUT': 300,
+        'KEY_PREFIX': 'bookshop',
+    },
+}
+
+CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/2'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    'daily-inventory-report': {
+        'task': 'catalog.tasks.generate_inventory_report',
+        'schedule': crontab(hour=8, minute=0),
+    },
+    'daily-clear-expired-sessions': {
+        'task': 'catalog.tasks.clear_expired_sessions',
+        'schedule': crontab(hour=3, minute=15),
+    },
+}
 
 STRIPE_PUBLISHABLE_KEY = env('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
@@ -252,3 +276,11 @@ CORS_ALLOWED_ORIGINS = env.list(
 )
 
 CORS_URLS_REGEX = r'^/api/.*$'
+SENTRY_DSN = env('SENTRY_DSN', default='')
+
+if SENTRY_DSN and env('DJANGO_SETTINGS_MODULE', default='') == 'shop_project.settings':
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env('SENTRY_ENVIRONMENT', default='development'),
+        send_default_pii=False,
+    )

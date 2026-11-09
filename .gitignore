@@ -11,3 +11,4 @@ staticfiles/
 .coverage.*
 htmlcov/
 coverage.xml
+/reports/

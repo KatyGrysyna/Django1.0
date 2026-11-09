@@ -29,3 +29,9 @@ STRIPE_SECRET_KEY = 'sk_test_placeholder'
 STRIPE_PUBLISHABLE_KEY = 'pk_test_placeholder'
 
 LOGGING = {}
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'bookshop-tests',
+    },
+}

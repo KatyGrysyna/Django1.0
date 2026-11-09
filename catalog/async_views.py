@@ -4,7 +4,7 @@ from django.shortcuts import aget_object_or_404
 from django.views.decorators.http import require_GET
 
 from .models import Book, Category
-
+from .category_cache import cache_category_list
 
 @require_GET
 async def book_list(request):
@@ -104,6 +104,7 @@ async def book_detail(request, pk):
 
 
 @require_GET
+@cache_category_list
 async def category_list(request):
     """Return categories and their book counts as JSON.
 

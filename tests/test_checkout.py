@@ -1,5 +1,5 @@
 from decimal import Decimal
-from smtplib import SMTPException
+from kombu.exceptions import OperationalError
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -18,7 +18,7 @@ from django.test import Client
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.django_db,
+    pytest.mark.django_db(transaction=True),
 ]
 
 
@@ -28,7 +28,7 @@ def services():
         override('uk'),
         patch('catalog.views.stripe.checkout.Session.create') as create,
         patch('catalog.views.stripe.checkout.Session.retrieve') as retrieve,
-        patch('catalog.views.send_mail') as email,
+        patch('catalog.views.send_order_confirmation.delay') as email,
     ):
         create.return_value = SimpleNamespace(
             id='cs_test_checkout',
@@ -39,7 +39,7 @@ def services():
             currency='uah',
             amount_total=20000,
         )
-        email.return_value = 1
+
 
         yield SimpleNamespace(
             create=create,
@@ -172,16 +172,7 @@ def test_paid_order_sends_email_once_and_preserves_new_cart(
     assert checkout_order.status == 'paid'
     assert client.session['cart'] == {}
 
-    services.email.assert_called_once_with(
-        subject='Дякуємо за замовлення',
-        message=(
-            f'Замовлення #{checkout_order.pk} оплачено.\n'
-            'Сума: 200.00 грн'
-        ),
-        from_email=None,
-        recipient_list=[user.email],
-    )
-
+    services.email.assert_called_once_with(checkout_order.pk, 'uk')
     client.get(f'/uk/cart/add/{book.pk}/')
 
     response = client.get(
@@ -302,7 +293,7 @@ def test_email_failure_does_not_undo_confirmed_payment(
     checkout_order,
     services,
 ):
-    services.email.side_effect = SMTPException('Test email failure')
+    services.email.side_effect = OperationalError('Test broker failure')
 
     response = client.get(
         '/uk/checkout/success/',
