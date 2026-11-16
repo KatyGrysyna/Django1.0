@@ -16,45 +16,44 @@ from .api_views import (
     ThrottledTokenVerifyView,
 )
 
-
-app_name = 'api'
+app_name = "api"
 
 router = DefaultRouter()
-router.register('books', BookViewSet, basename='book')
-router.register('categories', CategoryViewSet, basename='category')
-router.register('orders', OrderViewSet, basename='order')
-router.register('cart', CartViewSet, basename='cart')
+router.register("books", BookViewSet, basename="book")
+router.register("categories", CategoryViewSet, basename="category")
+router.register("orders", OrderViewSet, basename="order")
+router.register("cart", CartViewSet, basename="cart")
 
 urlpatterns = [
     path(
-        'token/',
+        "token/",
         ThrottledTokenObtainPairView.as_view(),
-        name='token_obtain_pair',
+        name="token_obtain_pair",
     ),
     path(
-        'token/refresh/',
+        "token/refresh/",
         ThrottledTokenRefreshView.as_view(),
-        name='token_refresh',
+        name="token_refresh",
     ),
     path(
-        'token/verify/',
+        "token/verify/",
         ThrottledTokenVerifyView.as_view(),
-        name='token_verify',
+        name="token_verify",
     ),
     path(
-        'schema/',
+        "schema/",
         SpectacularAPIView.as_view(
             permission_classes=[AllowAny],
         ),
-        name='schema',
+        name="schema",
     ),
     path(
-        'docs/',
+        "docs/",
         SpectacularSwaggerView.as_view(
-            url_name='api:schema',
+            url_name="api:schema",
             permission_classes=[AllowAny],
         ),
-        name='docs',
+        name="docs",
     ),
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]

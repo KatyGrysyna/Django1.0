@@ -12,7 +12,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy, reverse
 from django.utils.translation import get_language, gettext as _
 from django.views.decorators.http import require_POST
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+)
 from django.core.cache import cache
 
 from .cart import Cart
@@ -28,14 +34,14 @@ class BookListView(ListView):
     """Display six books per page with an optional category filter."""
 
     model = Book
-    template_name = 'catalog/book_list.html'
-    context_object_name = 'books'
+    template_name = "catalog/book_list.html"
+    context_object_name = "books"
     paginate_by = 6
 
     def get_queryset(self):
         """Return books ordered by ID and filtered by category slug."""
-        queryset = Book.objects.order_by('id')
-        category_slug = self.request.GET.get('category')
+        queryset = Book.objects.order_by("id")
+        category_slug = self.request.GET.get("category")
         if category_slug:
             queryset = queryset.filter(category__slug=category_slug)
         return queryset
@@ -43,8 +49,8 @@ class BookListView(ListView):
     def get_context_data(self, **kwargs):
         """Add available categories and the selected filter to the context."""
         context = super().get_context_data(**kwargs)
-        context['categories'] = Category.objects.all()
-        context['selected_category'] = self.request.GET.get('category')
+        context["categories"] = Category.objects.all()
+        context["selected_category"] = self.request.GET.get("category")
         return context
 
 
@@ -52,9 +58,9 @@ class BookDetailView(DetailView):
     """Display a book and its category, or return HTTP 404."""
 
     model = Book
-    queryset = Book.objects.select_related('category')
-    template_name = 'catalog/book_detail.html'
-    context_object_name = 'book'
+    queryset = Book.objects.select_related("category")
+    template_name = "catalog/book_detail.html"
+    context_object_name = "book"
 
     def get_object(self, queryset=None):
         """Load public book details from the cache or the database."""
@@ -73,9 +79,9 @@ class BookCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 
     model = Book
     form_class = BookForm
-    template_name = 'catalog/book_form.html'
-    success_url = reverse_lazy('catalog:book_list')
-    permission_required = 'catalog.add_book'
+    template_name = "catalog/book_form.html"
+    success_url = reverse_lazy("catalog:book_list")
+    permission_required = "catalog.add_book"
 
 
 class BookUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -86,9 +92,9 @@ class BookUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
 
     model = Book
     form_class = BookForm
-    template_name = 'catalog/book_form.html'
-    success_url = reverse_lazy('catalog:book_list')
-    permission_required = 'catalog.change_book'
+    template_name = "catalog/book_form.html"
+    success_url = reverse_lazy("catalog:book_list")
+    permission_required = "catalog.change_book"
 
 
 class BookDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -99,9 +105,9 @@ class BookDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     """
 
     model = Book
-    template_name = 'catalog/book_confirm_delete.html'
-    success_url = reverse_lazy('catalog:book_list')
-    permission_required = 'catalog.delete_book'
+    template_name = "catalog/book_confirm_delete.html"
+    success_url = reverse_lazy("catalog:book_list")
+    permission_required = "catalog.delete_book"
 
 
 def cart_add(request, book_id):
@@ -109,7 +115,7 @@ def cart_add(request, book_id):
     cart = Cart(request)
     book = get_object_or_404(Book, id=book_id)
     cart.add(book=book)
-    return redirect('catalog:cart_detail')
+    return redirect("catalog:cart_detail")
 
 
 def cart_remove(request, book_id):
@@ -117,20 +123,20 @@ def cart_remove(request, book_id):
     cart = Cart(request)
     book = get_object_or_404(Book, id=book_id)
     cart.remove(book)
-    return redirect('catalog:cart_detail')
+    return redirect("catalog:cart_detail")
 
 
 def cart_clear(request):
     """Remove all items from the session cart and redirect to its page."""
     cart = Cart(request)
     cart.clear()
-    return redirect('catalog:cart_detail')
+    return redirect("catalog:cart_detail")
 
 
 def cart_detail(request):
     """Display the current session cart, its items and total price."""
     cart = Cart(request)
-    return render(request, 'catalog/cart_detail.html', {'cart': cart})
+    return render(request, "catalog/cart_detail.html", {"cart": cart})
 
 
 @login_required
@@ -144,7 +150,7 @@ def checkout(request):
     cart = Cart(request)
 
     if len(cart) == 0:
-        return redirect('catalog:cart_detail')
+        return redirect("catalog:cart_detail")
 
     with transaction.atomic():
         order = Order.objects.create(user=request.user)
@@ -153,51 +159,48 @@ def checkout(request):
         for item in cart:
             OrderItem.objects.create(
                 order=order,
-                book=item['book'],
-                quantity=item['quantity'],
-                price=item['price'],
+                book=item["book"],
+                quantity=item["quantity"],
+                price=item["price"],
             )
-            line_items.append({
-                'price_data': {
-                    'currency': 'uah',
-                    'product_data': {
-                        'name': item['book'].title,
+            line_items.append(
+                {
+                    "price_data": {
+                        "currency": "uah",
+                        "product_data": {
+                            "name": item["book"].title,
+                        },
+                        "unit_amount": int(item["price"] * 100),
                     },
-                    'unit_amount': int(item['price'] * 100),
-                },
-                'quantity': item['quantity'],
-            })
+                    "quantity": item["quantity"],
+                }
+            )
 
     try:
         session = stripe.checkout.Session.create(
             line_items=line_items,
-            mode='payment',
-            success_url=request.build_absolute_uri(
-                reverse('catalog:checkout_success')
-            ) + f'?order_id={order.id}',
-            cancel_url=request.build_absolute_uri(
-                reverse('catalog:checkout_cancel')
-            ),
+            mode="payment",
+            success_url=request.build_absolute_uri(reverse("catalog:checkout_success"))
+            + f"?order_id={order.id}",
+            cancel_url=request.build_absolute_uri(reverse("catalog:checkout_cancel")),
         )
     except stripe.StripeError:
         logger.exception(
-            'Could not create Stripe checkout for order %s',
+            "Could not create Stripe checkout for order %s",
             order.pk,
         )
         return render(
             request,
-            'catalog/cart_detail.html',
+            "catalog/cart_detail.html",
             {
-                'cart': cart,
-                'checkout_error': _(
-                    'Не вдалося створити оплату. Спробуйте пізніше.'
-                ),
+                "cart": cart,
+                "checkout_error": _("Не вдалося створити оплату. Спробуйте пізніше."),
             },
             status=503,
         )
 
     order.stripe_session_id = session.id
-    order.save(update_fields=['stripe_session_id'])
+    order.save(update_fields=["stripe_session_id"])
 
     return HttpResponseRedirect(session.url, status=303)
 
@@ -211,7 +214,7 @@ def checkout_success(request):
     to send a confirmation email. Preserve a cart changed after checkout.
     """
     try:
-        order_id = int(request.GET.get('order_id', ''))
+        order_id = int(request.GET.get("order_id", ""))
     except (TypeError, ValueError):
         raise Http404
 
@@ -221,15 +224,15 @@ def checkout_success(request):
         user=request.user,
     )
 
-    if order.status == 'paid':
+    if order.status == "paid":
         return render(
             request,
-            'catalog/checkout_success.html',
-            {'order': order},
+            "catalog/checkout_success.html",
+            {"order": order},
         )
 
-    if order.status != 'pending' or not order.stripe_session_id:
-        return redirect('catalog:cart_detail')
+    if order.status != "pending" or not order.stripe_session_id:
+        return redirect("catalog:cart_detail")
 
     try:
         session = stripe.checkout.Session.retrieve(
@@ -237,43 +240,39 @@ def checkout_success(request):
         )
     except stripe.StripeError:
         logger.exception(
-            'Could not retrieve Stripe session for order %s',
+            "Could not retrieve Stripe session for order %s",
             order.pk,
         )
-        return redirect('catalog:cart_detail')
+        return redirect("catalog:cart_detail")
 
-    if session.payment_status != 'paid':
-        return redirect('catalog:cart_detail')
+    if session.payment_status != "paid":
+        return redirect("catalog:cart_detail")
 
     total = order.get_total()
 
-    if (
-        session.currency != 'uah'
-        or session.amount_total != int(total * 100)
-    ):
+    if session.currency != "uah" or session.amount_total != int(total * 100):
         raise PermissionDenied
 
     updated = Order.objects.filter(
         pk=order.pk,
-        status='pending',
-    ).update(status='paid')
+        status="pending",
+    ).update(status="paid")
 
     order.refresh_from_db()
 
-    if order.status != 'paid':
-        return redirect('catalog:cart_detail')
+    if order.status != "paid":
+        return redirect("catalog:cart_detail")
 
     if updated:
         cart = Cart(request)
 
         current_items = sorted(
-            (book_id, item['quantity'], Decimal(item['price']))
+            (book_id, item["quantity"], Decimal(item["price"]))
             for book_id, item in cart.cart.items()
         )
 
         paid_items = sorted(
-            (str(item.book_id), item.quantity, item.price)
-            for item in order.items.all()
+            (str(item.book_id), item.quantity, item.price) for item in order.items.all()
         )
 
         if current_items == paid_items:
@@ -290,11 +289,11 @@ def checkout_success(request):
 
     return render(
         request,
-        'catalog/checkout_success.html',
-        {'order': order},
+        "catalog/checkout_success.html",
+        {"order": order},
     )
 
 
 def checkout_cancel(request):
     """Display the cancellation page while preserving the order and cart."""
-    return render(request, 'catalog/checkout_cancel.html')
+    return render(request, "catalog/checkout_cancel.html")

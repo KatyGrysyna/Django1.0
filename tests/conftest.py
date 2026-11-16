@@ -46,16 +46,12 @@ def api_client():
 @pytest.fixture
 def auth_api_client(api_client, user):
     token = RefreshToken.for_user(user).access_token
-    api_client.credentials(
-        HTTP_AUTHORIZATION=f'Bearer {token}'
-    )
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
     return api_client
 
 
 @pytest.fixture
 def staff_api_client(api_client, staff_user):
     token = RefreshToken.for_user(staff_user).access_token
-    api_client.credentials(
-        HTTP_AUTHORIZATION=f'Bearer {token}'
-    )
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
     return api_client

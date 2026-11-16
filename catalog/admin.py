@@ -9,16 +9,17 @@ class BookInline(admin.TabularInline):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug')
+    list_display = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
-    search_fields = ('name',)
+    search_fields = ("name",)
     inlines = [BookInline]
 
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'author', 'price', 'stock', 'category')
-    list_filter = ('category',)
-    search_fields = ('title', 'author')
+    list_display = ("title", "author", "price", "stock", "category")
+    list_filter = ("category",)
+    search_fields = ("title", "author")
+
 
 # Register your models here.

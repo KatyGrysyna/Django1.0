@@ -10,29 +10,27 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CustomUser
 
-    username = factory.Sequence(lambda n: f'test_user_{n}')
-    email = factory.LazyAttribute(
-        lambda user: f'{user.username}@example.com'
-    )
-    password = factory.django.Password('TestPass123!')
+    username = factory.Sequence(lambda n: f"test_user_{n}")
+    email = factory.LazyAttribute(lambda user: f"{user.username}@example.com")
+    password = factory.django.Password("TestPass123!")
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Category
 
-    name = factory.Sequence(lambda n: f'Категорія {n}')
-    slug = factory.Sequence(lambda n: f'category-{n}')
+    name = factory.Sequence(lambda n: f"Категорія {n}")
+    slug = factory.Sequence(lambda n: f"category-{n}")
 
 
 class BookFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Book
 
-    title = factory.Sequence(lambda n: f'Книга {n}')
-    author = 'Тестовий автор'
-    price = Decimal('100.00')
-    description = 'Опис тестової книги'
+    title = factory.Sequence(lambda n: f"Книга {n}")
+    author = "Тестовий автор"
+    price = Decimal("100.00")
+    description = "Опис тестової книги"
     stock = 10
     category = factory.SubFactory(CategoryFactory)
 

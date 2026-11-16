@@ -24,7 +24,7 @@ from .serializers import (
 class BookViewSet(ModelViewSet):
     """List and retrieve books publicly; allow staff to manage them."""
 
-    queryset = Book.objects.select_related('category').order_by('id')
+    queryset = Book.objects.select_related("category").order_by("id")
     serializer_class = BookSerializer
     permission_classes = [IsAdminOrReadOnly]
     filterset_class = BookFilter
@@ -33,18 +33,18 @@ class BookViewSet(ModelViewSet):
 class CategoryViewSet(ModelViewSet):
     """List and retrieve categories publicly; allow staff to manage them."""
 
-    queryset = Category.objects.order_by('id')
+    queryset = Category.objects.order_by("id")
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
-    filterset_fields = ['name', 'slug']
+    filterset_fields = ["name", "slug"]
 
 
 class OrderViewSet(ModelViewSet):
     """Manage the authenticated user's orders with nested items."""
 
-    queryset = Order.objects.prefetch_related(
-        'items__book__category'
-    ).order_by('-created_at', '-id')
+    queryset = Order.objects.prefetch_related("items__book__category").order_by(
+        "-created_at", "-id"
+    )
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
     filterset_class = OrderFilter
@@ -54,7 +54,7 @@ class OrderViewSet(ModelViewSet):
         queryset = super().get_queryset()
 
         if (
-            getattr(self, 'swagger_fake_view', False)
+            getattr(self, "swagger_fake_view", False)
             or not self.request.user.is_authenticated
         ):
             return queryset.none()
@@ -74,13 +74,15 @@ class OrderViewSet(ModelViewSet):
             user=self.request.user,
         )
 
-        if order.status != 'pending' or order.stripe_session_id:
-            raise ValidationError({
-                'detail': (
-                    'Only pending orders without a payment session '
-                    'can be deleted.'
-                ),
-            })
+        if order.status != "pending" or order.stripe_session_id:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Only pending orders without a payment session "
+                        "can be deleted."
+                    ),
+                }
+            )
 
         order.delete()
 
@@ -88,9 +90,7 @@ class OrderViewSet(ModelViewSet):
 class CartViewSet(ModelViewSet):
     """Manage the authenticated user's database cart and its items."""
 
-    queryset = Cart.objects.prefetch_related(
-        'items__book__category'
-    ).order_by('id')
+    queryset = Cart.objects.prefetch_related("items__book__category").order_by("id")
     serializer_class = CartSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
@@ -99,7 +99,7 @@ class CartViewSet(ModelViewSet):
         queryset = super().get_queryset()
 
         if (
-            getattr(self, 'swagger_fake_view', False)
+            getattr(self, "swagger_fake_view", False)
             or not self.request.user.is_authenticated
         ):
             return queryset.none()
@@ -115,18 +115,18 @@ class ThrottledTokenObtainPairView(TokenObtainPairView):
     """Issue access and refresh tokens with an authentication rate limit."""
 
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'auth'
+    throttle_scope = "auth"
 
 
 class ThrottledTokenRefreshView(TokenRefreshView):
     """Refresh an access token with an authentication rate limit."""
 
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'auth'
+    throttle_scope = "auth"
 
 
 class ThrottledTokenVerifyView(TokenVerifyView):
     """Verify a token with an authentication rate limit."""
 
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'auth'
+    throttle_scope = "auth"

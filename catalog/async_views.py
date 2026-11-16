@@ -6,6 +6,7 @@ from django.views.decorators.http import require_GET
 from .models import Book, Category
 from .category_cache import cache_category_list
 
+
 @require_GET
 async def book_list(request):
     """Return a filtered page of books using asynchronous ORM queries.
@@ -14,8 +15,8 @@ async def book_list(request):
     Return HTTP 400 for invalid parameters and 404 for a missing page.
     """
     try:
-        page = int(request.GET.get('page', '1'))
-        page_size = int(request.GET.get('page_size', '20'))
+        page = int(request.GET.get("page", "1"))
+        page_size = int(request.GET.get("page_size", "20"))
 
         if page < 1 or not 1 <= page_size <= 100:
             raise ValueError
@@ -23,17 +24,17 @@ async def book_list(request):
     except (TypeError, ValueError):
         return JsonResponse(
             {
-                'error': (
-                    'page must be a positive integer; '
-                    'page_size must be an integer from 1 to 100.'
+                "error": (
+                    "page must be a positive integer; "
+                    "page_size must be an integer from 1 to 100."
                 ),
             },
             status=400,
         )
 
-    queryset = Book.objects.order_by('id')
+    queryset = Book.objects.order_by("id")
 
-    category_slug = request.GET.get('category')
+    category_slug = request.GET.get("category")
     if category_slug:
         queryset = queryset.filter(category__slug=category_slug)
 
@@ -42,7 +43,7 @@ async def book_list(request):
 
     if page > total_pages:
         return JsonResponse(
-            {'error': 'Page not found.'},
+            {"error": "Page not found."},
             status=404,
         )
 
@@ -50,29 +51,29 @@ async def book_list(request):
 
     books = [
         {
-            'id': book.id,
-            'title': book.title,
-            'author': book.author,
-            'price': str(book.price),
-            'stock': book.stock,
-            'category_id': book.category_id,
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "price": str(book.price),
+            "stock": book.stock,
+            "category_id": book.category_id,
         }
-        async for book in queryset[start:start + page_size]
+        async for book in queryset[start : start + page_size]
     ]
 
     return JsonResponse(
         {
-            'books': books,
-            'pagination': {
-                'page': page,
-                'page_size': page_size,
-                'total': total,
-                'total_pages': total_pages,
-                'has_next': page < total_pages,
-                'has_previous': page > 1,
+            "books": books,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
             },
         },
-        json_dumps_params={'ensure_ascii': False},
+        json_dumps_params={"ensure_ascii": False},
     )
 
 
@@ -84,22 +85,22 @@ async def book_detail(request, pk):
     Serialize the price as a string to preserve decimal precision.
     """
     book = await aget_object_or_404(
-        Book.objects.select_related('category'),
+        Book.objects.select_related("category"),
         pk=pk,
     )
 
     return JsonResponse(
         {
-            'id': book.id,
-            'title': book.title,
-            'author': book.author,
-            'description': book.description,
-            'price': str(book.price),
-            'stock': book.stock,
-            'category_id': book.category_id,
-            'category_name': book.category.name,
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "description": book.description,
+            "price": str(book.price),
+            "stock": book.stock,
+            "category_id": book.category_id,
+            "category_name": book.category.name,
         },
-        json_dumps_params={'ensure_ascii': False},
+        json_dumps_params={"ensure_ascii": False},
     )
 
 
@@ -112,20 +113,20 @@ async def category_list(request):
     Retrieve results using asynchronous iteration.
     """
     queryset = Category.objects.annotate(
-        book_count=Count('books'),
-    ).order_by('name', 'id')
+        book_count=Count("books"),
+    ).order_by("name", "id")
 
     categories = [
         {
-            'id': category.id,
-            'name': category.name,
-            'slug': category.slug,
-            'book_count': category.book_count,
+            "id": category.id,
+            "name": category.name,
+            "slug": category.slug,
+            "book_count": category.book_count,
         }
         async for category in queryset
     ]
 
     return JsonResponse(
-        {'categories': categories},
-        json_dumps_params={'ensure_ascii': False},
+        {"categories": categories},
+        json_dumps_params={"ensure_ascii": False},
     )
