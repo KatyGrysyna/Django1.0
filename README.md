@@ -1,5 +1,13 @@
 # Книжковий магазин
 
+
+[![Django CI](https://github.com/KatyGrysyna/Django1.0/actions/workflows/django.yml/badge.svg?branch=ci-cd-deploy&event=push)](https://github.com/KatyGrysyna/Django1.0/actions/workflows/django.yml?query=branch%3Aci-cd-deploy)
+[![Coverage snapshot](https://img.shields.io/badge/coverage_snapshot-91.80%25-brightgreen)](#тестування)
+
+**Демо:** [Книжковий магазин на Render](https://bookshop-ci-cd-deploy.onrender.com/uk/)
+
+Coverage badge відображає результат перевіреного запуску GitHub Actions для коміту `dcd11f9`: 179 тестів, покриття 91,80%. Значення цього badge оновлюється вручну після наступних вимірювань.
+
 Навчальний Django-проєкт: каталог книг, категорії, реєстрація користувачів, кошик, оформлення замовлень через Stripe та асинхронний JSON API.
 
 Інтерфейс підтримує українську й англійську мови.
@@ -38,7 +46,7 @@
 ### 1. Клонування
 
 ```powershell
-git clone --branch redis-celery-nginx https://github.com/KatyGrysyna/Django1.0.git
+git clone --branch ci-cd-deploy https://github.com/KatyGrysyna/Django1.0.git
 cd Django1.0
 ```
 
@@ -291,7 +299,7 @@ REST API використовує моделі `Cart` і `CartItem` у базі 
 
 ### CORS
 
-За замовчуванням дозволено такі origins:
+У локальному середовищі за замовчуванням дозволено такі origins:
 
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
@@ -350,11 +358,13 @@ docker-compose exec web python -m pytest --cov --cov-report=term-missing --cov-r
 
 Результат перевіреного повного запуску:
 
+Результат GitHub Actions для коміту `dcd11f9` від 17.11.2026:
+
 | Показник | Результат |
 | --- | --- |
-| Усі тести | 173 passed|
+| Усі тести | 179 passed |
 | API-тести | 80 passed |
-| Загальне покриття | 97,16% |
+| Загальне покриття | 91,80% |
 | `catalog/models.py` | 97,33% |
 | `accounts/models.py` | 100% |
 | `catalog/serializers.py` | 100% |
@@ -408,3 +418,121 @@ AI допоміг:
 
 - [AI_REVIEW.md](AI_REVIEW.md) — початковий код, рекомендації, рішення та фінальний код трьох views.
 - [AI_PROMPTS.md](AI_PROMPTS.md) — уривки фактичного запиту та контекст подальшої роботи.
+## CI/CD
+
+
+
+Pipeline налаштований у `.github/workflows/django.yml`.
+
+Він запускається для push у гілки `main` і `ci-cd-deploy`, для pull requests та вручну через GitHub Actions.
+
+Етапи перевірки:
+
+1. Встановлення залежностей і `pip check`.
+2. Перевірка форматування через `black --check`.
+3. Перевірка коду через `flake8`.
+4. Запуск pytest із вимірюванням coverage. Мінімальний поріг — 70%.
+5. Збереження `coverage.xml` і HTML-звіту як артефакту `coverage-report` на 7 днів.
+6. Побудова Docker-образу після успішних перевірок.
+
+Для push у налаштовані гілки образ також публікується в Docker Hub:
+
+- Репозиторій: `katerinkakc/bookshop`.
+- Теги: назва гілки та повний SHA коміту.
+- Образ для Render: `docker.io/katerinkakc/bookshop:ci-cd-deploy`.
+
+У налаштуваннях GitHub Actions використовуються:
+
+- Repository variable `DOCKERHUB_USERNAME` — ім’я користувача Docker Hub.
+- Repository secret `DOCKERHUB_TOKEN` — токен із правами публікації образу.
+
+Для pull requests і ручного запуску образ збирається, але не публікується.
+
+## Налаштування Django
+
+Налаштування розділено на модулі:
+
+| Модуль | Призначення |
+| --- | --- |
+| `shop_project.settings.base` | Спільні налаштування застосунку |
+| `shop_project.settings.development` | Локальна розробка та Django Debug Toolbar |
+| `shop_project.settings.production` | Хмарний запуск із `DEBUG=False`, WhiteNoise та захисними налаштуваннями |
+| `shop_project.settings_test` | Тести з окремою базою, LocMemCache та тестовою поштою |
+
+Модуль вибирається через `DJANGO_SETTINGS_MODULE`. За замовчуванням використовується `development`.
+
+Локальні змінні зберігаються в `.env`, який виключено з Git і Docker-образу. На Render значення задаються через Environment Variables.
+
+Production-конфігурація вмикає HTTPS redirect, secure cookies, HSTS, `nosniff`, `X-Frame-Options: DENY` та `Referrer-Policy: same-origin`.
+
+Домен Render автоматично додається до `ALLOWED_HOSTS` через `RENDER_EXTERNAL_HOSTNAME`. Додаткові домени можна вказати у змінній `ALLOWED_HOSTS`.
+
+## Розгортання на Render
+
+Навчальна версія розгорнута в регіоні Frankfurt:
+
+| Сервіс | Призначення |
+| --- | --- |
+| `bookshop-ci-cd-deploy` | Django через Gunicorn, статичні файли через WhiteNoise |
+| `bookshop-db` | PostgreSQL 16 |
+| `bookshop-cache` | Valkey 8 — Redis-сумісне сховище для кешування |
+
+Усі три сервіси використовують тариф Free.
+
+Посилання:
+
+- [Сайт](https://bookshop-ci-cd-deploy.onrender.com/uk/)
+- [Health check](https://bookshop-ci-cd-deploy.onrender.com/health/)
+- [API документація](https://bookshop-ci-cd-deploy.onrender.com/api/docs/)
+
+### Змінні середовища
+
+У Render → Environment Variables налаштовано:
+
+| Змінна | Значення або джерело |
+| --- | --- |
+| `DJANGO_SETTINGS_MODULE` | `shop_project.settings.production` |
+| `DEBUG` | `False` |
+| `WEB_CONCURRENCY` | `1` |
+| `EMAIL_ENABLED` | `False` |
+| `SECRET_KEY` | Окремий довгий випадковий ключ для хмарного сайту |
+| `DATABASE_URL` | Internal Database URL сервісу `bookshop-db` |
+| `CACHE_URL` | Internal URL сервісу `bookshop-cache` |
+| `STRIPE_PUBLISHABLE_KEY` | Власний тестовий ключ Stripe з префіксом `pk_test_` |
+| `STRIPE_SECRET_KEY` | Власний тестовий ключ Stripe з префіксом `sk_test_` |
+
+Секретні значення зберігаються в налаштуваннях Render і не додаються до репозиторію.
+
+### Запуск і оновлення
+
+Render використовує образ `docker.io/katerinkakc/bookshop:ci-cd-deploy`.
+
+Поле Docker Command залишається порожнім. Скрипт запуску образу застосовує міграції, виконує `collectstatic` та запускає Gunicorn на порту зі змінної `PORT`.
+
+Після публікації нового образу через GitHub Actions оновлення сервісу запускається в Render через **Manual Deploy → Deploy latest reference**.
+
+У хмарній версії статичні файли обслуговує WhiteNoise. Локальний Docker Compose використовує NGINX.
+
+### Health check
+
+У Render встановлено Health Check Path: `/health/`.
+
+Endpoint перевіряє підключення до PostgreSQL і читання з кешу:
+
+- HTTP 200 та `{"status": "ok"}` — перевірка успішна.
+- HTTP 503 та `{"status": "unavailable"}` — помилка підключення до бази або кешу.
+
+Під час перевірки розгортання `/health/` і `/static/admin/css/base.css` повернули HTTP 200.
+
+### Межі навчальної хмарної версії
+
+- Free web service засинає після 15 хвилин неактивності. Перший запит після паузи може виконуватися довше.
+- Free PostgreSQL діє 30 днів від створення.
+- Free Key Value не зберігає кеш після перезапуску.
+- Хмарна база створена окремо: локальні користувачі та книги автоматично до неї не переносяться.
+- SMTP на стандартних портах заблокований тарифом Free. У демоверсії встановлено `EMAIL_ENABLED=False`: листи не ставляться в чергу Celery.
+- Celery worker і Celery Beat працюють у локальному Docker Compose. Надсилання листів, генерація звітів та періодичне очищення сесій демонструються локально.
+
+SMTP-конфігурація збережена в production settings. Для середовища з доступним SMTP можна ввімкнути `EMAIL_ENABLED=True` та задати `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` і `DEFAULT_FROM_EMAIL`.
+
+За вимкненої пошти `manage.py check` показує очікуване попередження `mail.W001`.
