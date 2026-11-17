@@ -479,3 +479,27 @@ def test_first_payment_confirmation_preserves_changed_cart(
         checkout_order.stripe_session_id,
     )
     services.email.assert_called_once()
+
+
+def test_paid_order_skips_email_when_disabled(
+    client,
+    checkout_order,
+    services,
+    settings,
+):
+    # Generated with AI, reviewed and modified
+    settings.EMAIL_ENABLED = False
+
+    response = client.get(
+        "/uk/checkout/success/",
+        {"order_id": checkout_order.pk},
+    )
+
+    assertContains(response, "Оплата успішна!")
+
+    checkout_order.refresh_from_db()
+    assert checkout_order.status == "paid"
+    assert client.session["cart"] == {}
+
+    services.retrieve.assert_called_once_with(checkout_order.stripe_session_id)
+    services.email.assert_not_called()

@@ -9,6 +9,10 @@ DEBUG = False
 
 ALLOWED_HOSTS = base.env.list("ALLOWED_HOSTS", default=[])
 
+render_hostname = base.env("RENDER_EXTERNAL_HOSTNAME", default="")
+if render_hostname:
+    ALLOWED_HOSTS.append(render_hostname)
+
 CSRF_TRUSTED_ORIGINS = base.env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=[],
@@ -46,21 +50,26 @@ SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 
 SECURE_HSTS_SECONDS = base.env.int("SECURE_HSTS_SECONDS", default=3600)
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-        "OPTIONS": {
-            "host": base.env("SMTP_HOST"),
-            "port": base.env.int("SMTP_PORT", default=587),
-            "username": base.env("SMTP_USERNAME"),
-            "password": base.env("SMTP_PASSWORD"),
-            "use_tls": True,
-            "timeout": 10,
-        },
-    },
-}
+EMAIL_ENABLED = base.env.bool("EMAIL_ENABLED", default=True)
 
-DEFAULT_FROM_EMAIL = base.env("DEFAULT_FROM_EMAIL")
+if EMAIL_ENABLED:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": base.env("SMTP_HOST"),
+                "port": base.env.int("SMTP_PORT", default=587),
+                "username": base.env("SMTP_USERNAME"),
+                "password": base.env("SMTP_PASSWORD"),
+                "use_tls": True,
+                "timeout": 10,
+            },
+        },
+    }
+
+    DEFAULT_FROM_EMAIL = base.env("DEFAULT_FROM_EMAIL")
+else:
+    MAILERS = {}
 
 LOGGING = deepcopy(base.LOGGING)
 LOGGING["handlers"].pop("file", None)

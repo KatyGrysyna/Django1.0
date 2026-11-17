@@ -278,7 +278,7 @@ def checkout_success(request):
         if current_items == paid_items:
             cart.clear()
 
-        if request.user.email:
+        if request.user.email and getattr(settings, "EMAIL_ENABLED", True):
             order_pk = order.pk
             language = get_language() or settings.LANGUAGE_CODE
 
