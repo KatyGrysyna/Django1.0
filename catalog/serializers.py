@@ -147,9 +147,10 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         order = Order.objects.select_for_update().get(pk=instance.pk)
 
-        if order.status != "pending" or order.stripe_session_id:
+        if not order.can_modify:
             raise serializers.ValidationError(
-                "Only pending orders without a payment session can be changed."
+                "Only pending orders without payment or warehouse processing "
+                "can be changed."
             )
 
         items = validated_data.pop("items", None)

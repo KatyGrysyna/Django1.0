@@ -25,3 +25,4 @@ CACHES = {
         "LOCATION": "bookshop-tests",
     },
 }
+WAREHOUSE_ENABLED = False

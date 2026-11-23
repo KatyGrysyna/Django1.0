@@ -10,6 +10,12 @@
     {% blocktrans with title=object.title %}Ви впевнені, що хочете видалити «{{ title }}»?{% endblocktrans %}
 </p>
 
+{% if delete_error %}
+<div class="alert alert-danger" role="alert">
+    {{ delete_error }}
+</div>
+{% endif %}
+
 <form method="post">
     {% csrf_token %}
 

@@ -19,9 +19,10 @@ from .serializers import (
     CategorySerializer,
     OrderSerializer,
 )
+from .api_mixins import ProtectedCatalogDeleteMixin
 
 
-class BookViewSet(ModelViewSet):
+class BookViewSet(ProtectedCatalogDeleteMixin, ModelViewSet):
     """List and retrieve books publicly; allow staff to manage them."""
 
     queryset = Book.objects.select_related("category").order_by("id")
@@ -30,7 +31,7 @@ class BookViewSet(ModelViewSet):
     filterset_class = BookFilter
 
 
-class CategoryViewSet(ModelViewSet):
+class CategoryViewSet(ProtectedCatalogDeleteMixin, ModelViewSet):
     """List and retrieve categories publicly; allow staff to manage them."""
 
     queryset = Category.objects.order_by("id")
@@ -67,19 +68,19 @@ class OrderViewSet(ModelViewSet):
 
     @transaction.atomic
     def perform_destroy(self, instance):
-        """Delete only pending orders without a payment session."""
+        """Delete an order only before payment or warehouse processing."""
         order = get_object_or_404(
             Order.objects.select_for_update(),
             pk=instance.pk,
             user=self.request.user,
         )
 
-        if order.status != "pending" or order.stripe_session_id:
+        if not order.can_modify:
             raise ValidationError(
                 {
                     "detail": (
-                        "Only pending orders without a payment session "
-                        "can be deleted."
+                        "Only pending orders without payment or warehouse "
+                        "processing can be deleted."
                     ),
                 }
             )

@@ -69,6 +69,16 @@ class Order(models.Model):
         ("cancelled", _("Скасовано")),
     ]
 
+    class WarehouseStatus(models.TextChoices):
+        NONE = "none", _("Резерв не запитано")
+        REQUESTING = "requesting", _("Запит резерву")
+        PENDING = "pending", _("Зарезервовано")
+        CONFIRMED = "confirmed", _("Списано зі складу")
+        RELEASING = "releasing", _("Скасування резерву")
+        RELEASED = "released", _("Резерв скасовано")
+        EXPIRED = "expired", _("Термін резерву минув")
+        FAILED = "failed", _("Помилка резервування")
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -90,6 +100,27 @@ class Order(models.Model):
         max_length=255,
         blank=True,
     )
+    warehouse_reservation_id = models.UUIDField(
+        verbose_name=_("Ідентифікатор резерву складу"),
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+    )
+    warehouse_status = models.CharField(
+        verbose_name=_("Стан резерву складу"),
+        max_length=20,
+        choices=WarehouseStatus.choices,
+        default=WarehouseStatus.NONE,
+        db_index=True,
+        editable=False,
+    )
+    warehouse_expires_at = models.DateTimeField(
+        verbose_name=_("Резерв діє до"),
+        null=True,
+        blank=True,
+        editable=False,
+    )
 
     class Meta:
         verbose_name = _("Замовлення")
@@ -100,6 +131,15 @@ class Order(models.Model):
             "number": self.pk,
             "username": self.user.username,
         }
+
+    @property
+    def can_modify(self):
+        return (
+            self.status == "pending"
+            and not self.stripe_session_id
+            and self.warehouse_status == self.WarehouseStatus.NONE
+            and self.warehouse_reservation_id is None
+        )
 
     def get_total(self):
         return sum(item.get_subtotal() for item in self.items.all())
@@ -114,7 +154,7 @@ class OrderItem(models.Model):
     )
     book = models.ForeignKey(
         Book,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name=_("Книга"),
     )
     quantity = models.PositiveIntegerField(

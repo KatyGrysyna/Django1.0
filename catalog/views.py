@@ -25,6 +25,14 @@ from .cart import Cart
 from .forms import BookForm
 from .models import Book, Category, Order, OrderItem
 from .tasks import send_order_confirmation
+from django.db.models.deletion import ProtectedError
+from .checkout_warehouse import (
+    confirm_checkout_stock,
+    prepare_warehouse_checkout,
+    save_checkout_session,
+)
+from .warehouse_client import WarehouseAPIError, WarehouseError
+from .warehouse_services import OrderWarehouseConflict
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = logging.getLogger(__name__)
@@ -109,6 +117,21 @@ class BookDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     success_url = reverse_lazy("catalog:book_list")
     permission_required = "catalog.delete_book"
 
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except ProtectedError:
+            return self.render_to_response(
+                self.get_context_data(
+                    form=form,
+                    delete_error=_(
+                        "Цю книгу не можна видалити, "
+                        "оскільки вона вже є в замовленні."
+                    ),
+                ),
+                status=409,
+            )
+
 
 def cart_add(request, book_id):
     """Add one copy of an existing book to the session cart and redirect."""
@@ -142,11 +165,7 @@ def cart_detail(request):
 @login_required
 @require_POST
 def checkout(request):
-    """Create an order and redirect the customer to Stripe Checkout.
-
-    Save the order and its items in one database transaction.
-    Preserve the cart and return HTTP 503 if Stripe creation fails.
-    """
+    """Reserve order items and redirect the customer to Stripe Checkout."""
     cart = Cart(request)
 
     if len(cart) == 0:
@@ -176,31 +195,65 @@ def checkout(request):
                 }
             )
 
+    session = None
+
     try:
+        warehouse_options = prepare_warehouse_checkout(order.pk)
+
         session = stripe.checkout.Session.create(
             line_items=line_items,
             mode="payment",
             success_url=request.build_absolute_uri(reverse("catalog:checkout_success"))
-            + f"?order_id={order.id}",
+            + f"?order_id={order.pk}",
             cancel_url=request.build_absolute_uri(reverse("catalog:checkout_cancel")),
+            **warehouse_options,
         )
-    except stripe.StripeError:
-        logger.exception(
-            "Could not create Stripe checkout for order %s",
+
+        save_checkout_session(order.pk, session.id)
+
+    except (stripe.StripeError, WarehouseError) as exc:
+        logger.warning(
+            "Checkout preparation failed: order=%s error=%s",
             order.pk,
+            type(exc).__name__,
         )
+
+        # If saving failed after Stripe creation, close the unused session.
+        if session is not None:
+            try:
+                stripe.checkout.Session.expire(session.id)
+            except stripe.StripeError as expire_error:
+                logger.warning(
+                    "Unused checkout could not be expired: order=%s error=%s",
+                    order.pk,
+                    type(expire_error).__name__,
+                )
+
+        conflict = isinstance(exc, OrderWarehouseConflict) or (
+            isinstance(exc, WarehouseAPIError) and exc.status_code in (400, 409)
+        )
+
+        if isinstance(exc, stripe.StripeError):
+            message = _("Не вдалося створити оплату. Спробуйте пізніше.")
+        elif conflict:
+            message = _(
+                "Не вдалося зарезервувати книги. "
+                "Перевірте наявність товарів і спробуйте знову."
+            )
+        else:
+            message = _(
+                "Склад тимчасово недоступний. Спробуйте оформити замовлення пізніше."
+            )
+
         return render(
             request,
             "catalog/cart_detail.html",
             {
                 "cart": cart,
-                "checkout_error": _("Не вдалося створити оплату. Спробуйте пізніше."),
+                "checkout_error": message,
             },
-            status=503,
+            status=409 if conflict else 503,
         )
-
-    order.stripe_session_id = session.id
-    order.save(update_fields=["stripe_session_id"])
 
     return HttpResponseRedirect(session.url, status=303)
 
@@ -228,7 +281,10 @@ def checkout_success(request):
         return render(
             request,
             "catalog/checkout_success.html",
-            {"order": order},
+            {
+                "order": order,
+                "warehouse_pending": not confirm_checkout_stock(order.pk),
+            },
         )
 
     if order.status != "pending" or not order.stripe_session_id:
@@ -290,7 +346,10 @@ def checkout_success(request):
     return render(
         request,
         "catalog/checkout_success.html",
-        {"order": order},
+        {
+            "order": order,
+            "warehouse_pending": not confirm_checkout_stock(order.pk),
+        },
     )
 
 

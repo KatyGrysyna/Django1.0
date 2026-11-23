@@ -270,3 +270,14 @@ CORS_ALLOWED_ORIGINS = env.list(
 
 CORS_URLS_REGEX = r"^/api/.*$"
 SENTRY_DSN = env("SENTRY_DSN", default="")
+WAREHOUSE_ENABLED = env.bool("WAREHOUSE_ENABLED", default=False)
+WAREHOUSE_API_URL = env("WAREHOUSE_API_URL", default="").rstrip("/")
+WAREHOUSE_USERNAME = env("WAREHOUSE_USERNAME", default="")
+WAREHOUSE_PASSWORD = env("WAREHOUSE_PASSWORD", default="")
+WAREHOUSE_CONNECT_TIMEOUT = env.float("WAREHOUSE_CONNECT_TIMEOUT", default=3.0)
+WAREHOUSE_READ_TIMEOUT = env.float("WAREHOUSE_READ_TIMEOUT", default=10.0)
+CELERY_BEAT_SCHEDULE["sync-warehouse-stock"] = {
+    "task": "catalog.tasks.sync_warehouse_stock",
+    "schedule": 60.0,
+    "options": {"expires": 55},
+}
