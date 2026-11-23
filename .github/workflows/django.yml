@@ -191,3 +191,43 @@ jobs:
           docker tag "${IMAGE_NAME}:ci" "${IMAGE}:${BRANCH_TAG}"
           docker push "${IMAGE}:${IMAGE_TAG}"
           docker push "${IMAGE}:${BRANCH_TAG}"
+  deploy:
+    name: Deploy - ${{ matrix.image }}
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/microservices-warehouse'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: bookshop
+            hook_secret: RENDER_BOOKSHOP_DEPLOY_HOOK
+          - image: warehouse
+            hook_secret: RENDER_WAREHOUSE_DEPLOY_HOOK
+
+    env:
+      DEPLOY_HOOK: ${{ secrets[matrix.hook_secret] }}
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      IMAGE_NAME: ${{ matrix.image }}
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Trigger Render deployment
+        shell: bash
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::error::Render deploy hook secret is missing."
+            exit 1
+          fi
+
+          IMAGE_URL="docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+          curl --fail --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --retry 2 \
+            --get \
+            --data-urlencode "imgURL=${IMAGE_URL}" \
+            "$DEPLOY_HOOK"
