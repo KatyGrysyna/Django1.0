@@ -281,3 +281,8 @@ CELERY_BEAT_SCHEDULE["sync-warehouse-stock"] = {
     "schedule": 60.0,
     "options": {"expires": 55},
 }
+CELERY_BEAT_SCHEDULE["reconcile-warehouse-orders"] = {
+    "task": "catalog.tasks.reconcile_warehouse_orders",
+    "schedule": 60.0,
+    "options": {"expires": 55},
+}
