@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
+    bash \
     libpq-dev \
     gcc \
     gettext \
@@ -18,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh \
+    && bash -n /app/start-render.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
