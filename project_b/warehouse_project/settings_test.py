@@ -3,7 +3,6 @@ from copy import deepcopy
 from . import settings as base
 from .settings import *  # noqa: F401,F403
 
-
 DEBUG = False
 SECRET_KEY = "warehouse-test-secret-key-not-for-production-123456789"
 ALLOWED_HOSTS = ["testserver", "localhost", "127.0.0.1", "warehouse"]

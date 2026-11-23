@@ -15,7 +15,6 @@ from pathlib import Path
 
 import environ
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
@@ -32,7 +31,6 @@ ALLOWED_HOSTS = env.list(
 # Application definition
 
 
-
 AUTH_USER_MODEL = "warehouse_accounts.WarehouseUser"
 SESSION_COOKIE_NAME = "warehouse_sessionid"
 CSRF_COOKIE_NAME = "warehouse_csrftoken"
@@ -40,6 +38,7 @@ CSRF_COOKIE_NAME = "warehouse_csrftoken"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -94,7 +93,10 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        ),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -111,7 +113,18 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+
+LANGUAGES = [
+    ("en", "English"),
+    ("uk", "Українська"),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
+
+LANGUAGE_COOKIE_NAME = "warehouse_language"
 
 TIME_ZONE = "UTC"
 
@@ -210,9 +223,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
-    "DEFAULT_PAGINATION_CLASS": (
-        "rest_framework.pagination.PageNumberPagination"
-    ),
+    "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.PageNumberPagination"),
     "PAGE_SIZE": 20,
 }
 
@@ -227,4 +238,26 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API складского сервиса ProjectB.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+}
+SENTRY_DSN = env("SENTRY_DSN", default="")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "{asctime} [{levelname}] {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
 }

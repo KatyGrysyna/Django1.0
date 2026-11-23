@@ -9,7 +9,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from inventory.models import StockItem
 
-
 pytestmark = [pytest.mark.api, pytest.mark.django_db]
 
 
@@ -96,9 +95,7 @@ def test_group_can_read_stock(auth_client, user, stock_item, group_name):
 
 
 def test_viewer_can_read_stock_detail(viewer_client, stock_item):
-    response = viewer_client.get(
-        reverse("stock-detail", kwargs={"pk": stock_item.pk})
-    )
+    response = viewer_client.get(reverse("stock-detail", kwargs={"pk": stock_item.pk}))
 
     assert response.status_code == 200
     assert response.data["id"] == stock_item.pk

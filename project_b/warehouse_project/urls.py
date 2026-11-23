@@ -1,9 +1,11 @@
+from .health import health_check
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
+    path("health/", health_check, name="health"),
     path("admin/", admin.site.urls),
     path("api/", include("inventory.urls")),
     path(

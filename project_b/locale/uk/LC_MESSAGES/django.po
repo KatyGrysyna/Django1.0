@@ -1,0 +1,145 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Warehouse 1.0\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != "
+"11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % "
+"100 > 14) ? 1 : n % 1 == 0 && (n % 10 == 0 || (n % 10 >= 5 && n % 10 <= 9) || "
+"(n % 100 >= 11 && n % 100 <= 14)) ? 2 : 3);\n"
+
+msgid "This stock item no longer exists. Reload the page."
+msgstr "Цієї складської позиції більше не існує. Оновіть сторінку."
+
+msgid "available quantity"
+msgstr "доступна кількість"
+
+msgid "book ID in ProjectA"
+msgstr "ID книги в ProjectA"
+
+msgid "title"
+msgstr "назва"
+
+msgid "total quantity"
+msgstr "загальна кількість"
+
+msgid "reserved quantity"
+msgstr "зарезервована кількість"
+
+msgid "updated at"
+msgstr "дата оновлення"
+
+msgid "stock item"
+msgstr "складська позиція"
+
+msgid "stock items"
+msgstr "складські позиції"
+
+msgid "Total quantity cannot be lower than reserved quantity."
+msgstr "Загальна кількість не може бути меншою за зарезервовану."
+
+msgid "pending"
+msgstr "очікує підтвердження"
+
+msgid "confirmed"
+msgstr "підтверджено"
+
+msgid "released"
+msgstr "звільнено"
+
+msgid "expired"
+msgstr "термін дії минув"
+
+msgid "order ID in ProjectA"
+msgstr "ID замовлення в ProjectA"
+
+msgid "created by"
+msgstr "створено користувачем"
+
+msgid "status"
+msgstr "статус"
+
+msgid "expires at"
+msgstr "термін дії до"
+
+msgid "created at"
+msgstr "дата створення"
+
+msgid "reservation"
+msgstr "резервування"
+
+msgid "reservations"
+msgstr "резервування"
+
+msgid "quantity"
+msgstr "кількість"
+
+msgid "reservation item"
+msgstr "позиція резервування"
+
+msgid "reservation items"
+msgstr "позиції резервування"
+
+msgid "Reservation not found."
+msgstr "Резервування не знайдено."
+
+msgid "An expired reservation cannot be confirmed."
+msgstr "Неможливо підтвердити резервування, термін дії якого минув."
+
+msgid "Only pending reservations can be confirmed."
+msgstr "Можна підтвердити лише резервування, що очікують підтвердження."
+
+msgid "Only pending reservations can be released."
+msgstr "Можна звільнити лише резервування, що очікують підтвердження."
+
+msgid "Each book must appear only once in a reservation."
+msgstr "Кожна книга має бути вказана в резервуванні лише один раз."
+
+msgid "The reservation conflicts with the warehouse state."
+msgstr "Резервування суперечить поточному стану складу."
+
+msgid "Create a reservation"
+msgstr "Створити резервування"
+
+msgid "Confirm a reservation"
+msgstr "Підтвердити резервування"
+
+msgid "Release a reservation"
+msgstr "Звільнити резервування"
+
+msgid "A reservation must contain between 1 and 100 items."
+msgstr "Резервування має містити від 1 до 100 позицій."
+
+msgid "Each item must contain external_book_id and quantity."
+msgstr "Кожна позиція має містити external_book_id та quantity."
+
+msgid "Invalid book ID."
+msgstr "Некоректний ID книги."
+
+msgid "Invalid book quantity."
+msgstr "Некоректна кількість книг."
+
+msgid "Invalid order ID."
+msgstr "Некоректний ID замовлення."
+
+msgid "This order already has a reservation with different items."
+msgstr "Для цього замовлення вже існує резервування з іншими позиціями."
+
+msgid "This reservation is no longer active."
+msgstr "Це резервування більше не активне."
+
+#, python-format
+msgid "Book %(book_id)s is not registered in the warehouse."
+msgstr "Книгу %(book_id)s не зареєстровано на складі."
+
+#, python-format
+msgid "Not enough stock for book %(book_id)s."
+msgstr "Недостатньо примірників книги %(book_id)s на складі."
+
+msgid "warehouse user"
+msgstr "користувач складу"
+
+msgid "warehouse users"
+msgstr "користувачі складу"

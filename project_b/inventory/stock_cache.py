@@ -6,7 +6,6 @@ from django.core.cache import cache
 from django.utils.translation import get_language
 from redis.exceptions import RedisError
 
-
 logger = logging.getLogger(__name__)
 
 CACHE_VERSION_KEY = "stock:version"

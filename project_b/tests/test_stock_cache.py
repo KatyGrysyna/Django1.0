@@ -13,7 +13,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from inventory.models import StockItem
 
-
 pytestmark = [pytest.mark.api, pytest.mark.django_db]
 
 
@@ -59,10 +58,7 @@ def test_second_request_uses_cache(viewer_client, stock_item):
     assert second["Cache-Control"] == "private, no-store"
 
     table = StockItem._meta.db_table
-    assert not any(
-        table in query["sql"]
-        for query in queries.captured_queries
-    )
+    assert not any(table in query["sql"] for query in queries.captured_queries)
 
 
 def test_cache_separates_filters(viewer_client, stock_item):

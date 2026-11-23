@@ -17,6 +17,9 @@ RUN python -m pip install --no-cache-dir -r requirements.txt \
 
 COPY . .
 
+RUN python -m django compilemessages -l uk --ignore=staticfiles
+
 EXPOSE 8000
+
 
 CMD ["gunicorn", "warehouse_project.wsgi:application", "--workers", "1", "--access-logfile", "-", "--error-logfile", "-"]
